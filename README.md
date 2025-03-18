@@ -134,3 +134,17 @@ VALUES
 FROM
 ('2024-10-10 00:00:00') TO ('2024-10-17 00:00:00');
 ```
+
+**Show all partition ranges**
+
+```sql
+SELECT
+	relname AS partition_table,
+	pg_get_expr(relpartbound,
+	oid) AS partition_range
+FROM
+	pg_class
+WHERE
+	relispartition
+	AND relkind = 'r';
+```
