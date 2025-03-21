@@ -62,16 +62,16 @@
 
 ```sql
 CREATE TABLE parking_lot_logs_new (
-	created_at timestamp DEFAULT CURRENT_TIMESTAMP(0) NOT NULL,
-	id uuid NOT NULL DEFAULT gen_random_uuid(),
-	ticket_id varchar NULL,
-	license_number varchar NOT NULL,
-	license_province varchar NULL,
-	mall_slug varchar NULL,
-	direction varchar NOT NULL,
-	client_timestamp timestamp NULL,
-	gate_no varchar NULL,
-	CONSTRAINT pk_parking_lot_logs PRIMARY KEY (ticket_id, client_timestamp)
+   created_at timestamp DEFAULT CURRENT_TIMESTAMP(0) NOT NULL,
+   id uuid NOT NULL DEFAULT gen_random_uuid(),
+   ticket_id varchar NULL,
+   license_number varchar NOT NULL,
+   license_province varchar NULL,
+   mall_slug varchar NULL,
+   direction varchar NOT NULL,
+   client_timestamp timestamp NULL,
+   gate_no varchar NULL,
+   CONSTRAINT pk_parking_lot_logs PRIMARY KEY (ticket_id, client_timestamp)
 ) PARTITION BY RANGE (client_timestamp);
 ```
 
@@ -105,13 +105,13 @@ Timezone of database is UTC but partition should be in ICT(GMT+7)
 ```sql
 CREATE FUNCTION create_weekly_partition() RETURNS void AS $$
    DECLARE
-		start_date_char TIMESTAMP;
-		start_date TIMESTAMP;
-		end_date TIMESTAMP;
+      start_date_char TIMESTAMP;
+      start_date TIMESTAMP;
+      end_date TIMESTAMP;
       partition_name TEXT;
    BEGIN
          start_date_char := date_trunc('week', now()) + interval '1 weeks';
-		   start_date := start_date_char - interval '7 hours';
+         start_date := start_date_char - interval '7 hours';
          end_date := start_date + interval '1 week';
          partition_name := 'parking_lot_logs_new_' || to_char(start_date_char, 'YYYYMMDD');
 
@@ -161,14 +161,14 @@ FROM
 
 ```sql
 SELECT
-	relname AS partition_table,
-	pg_get_expr(relpartbound,
-	oid) AS partition_range
+   relname AS partition_table,
+   pg_get_expr(relpartbound,
+   oid) AS partition_range
 FROM
-	pg_class
+   pg_class
 WHERE
-	relispartition
-	AND relkind = 'r';
+   relispartition
+   AND relkind = 'r';
 ```
 
 ### List all pg_cron jobs
@@ -253,26 +253,26 @@ Sample script
 
 ```sql
 CREATE FUNCTION update_cron_job() RETURNS void AS $$
-	DECLARE
-	   cron_schedule text;
-		cron_name text;
-	BEGIN
-	   -- Get the cron schedule from db_config table
-	   SELECT cfg_val INTO cron_schedule
-	   FROM db_config
-	   WHERE cfg_key = 'cron_time_parking_lot_log_weekly_partition' LIMIT 1;
+   DECLARE
+      cron_schedule text;
+      cron_name text;
+   BEGIN
+      -- Get the cron schedule from db_config table
+      SELECT cfg_val INTO cron_schedule
+      FROM db_config
+      WHERE cfg_key = 'cron_time_parking_lot_log_weekly_partition' LIMIT 1;
 
-	   -- If the schedule exists, create the cron job
-	   IF FOUND THEN
+      -- If the schedule exists, create the cron job
+      IF FOUND THEN
 
-			select jobname into cron_name from cron.job where jobname = 'create_weekly_parking_lot_logs_partition';
-			if cron_name is not null then
-		      -- Delete existing job with the same name if it exists (UPDATE triggered)
-		      PERFORM cron.unschedule(cron_name);
-				RAISE NOTICE 'Unschedule old cron job';
-			end if;
+         select jobname into cron_name from cron.job where jobname = 'create_weekly_parking_lot_logs_partition';
+         if cron_name is not null then
+            -- Delete existing job with the same name if it exists (UPDATE triggered)
+            PERFORM cron.unschedule(cron_name);
+            RAISE NOTICE 'Unschedule old cron job';
+         end if;
 
-			-- Create the new job with the schedule from the database (INSERT triggered)
+         -- Create the new job with the schedule from the database (INSERT triggered)
          PERFORM cron.schedule(
             'create_weekly_parking_lot_logs_partition',
             cron_schedule,
@@ -281,10 +281,10 @@ CREATE FUNCTION update_cron_job() RETURNS void AS $$
          RAISE NOTICE 'Scheduled job with cron pattern: %', cron_schedule;
 
       -- If can't found schedule, unschedule job (use when DELETE is triggered)
-	   ELSE
+      ELSE
          PERFORM cron.unschedule('create_weekly_parking_lot_logs_partition');
-	      RAISE EXCEPTION 'Cron schedule not found in db_config';
-	   END IF;
-	END;
+         RAISE EXCEPTION 'Cron schedule not found in db_config';
+      END IF;
+   END;
 $$ LANGUAGE plpgsql;
 ```
